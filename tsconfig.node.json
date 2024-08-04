@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "moduleResolution": "node",
+    "module": "ESNext"
+  },
+  "include": ["vitest.config.ts"]
+}
