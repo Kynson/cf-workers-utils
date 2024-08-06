@@ -26,6 +26,40 @@ async function generateToken(generateValidToken = true) {
   return { token, expectedTokenHash };
 }
 
+async function generateCryptoKeyPair() {
+  return (await crypto.subtle.generateKey(
+    { name: 'ECDSA', namedCurve: 'P-521' },
+    true,
+    ['verify', 'sign'],
+  )) as CryptoKeyPair;
+}
+
+async function prepareSignatureTestData(
+  data: ArrayBuffer | ArrayBufferView,
+  generateValidSignature = true,
+) {
+  const { publicKey: publicCryptoKey, privateKey: privateCryptoKey } =
+    await generateCryptoKeyPair();
+  // This is what the verification system should store
+  const publicJSONWebKey = JSON.stringify(
+    await crypto.subtle.exportKey('jwk', publicCryptoKey),
+  );
+
+  const signatureBufferView = new Uint8Array(
+    await crypto.subtle.sign(
+      { name: 'ECDSA', hash: 'SHA-512' },
+      privateCryptoKey,
+      data,
+    ),
+  );
+  // Modify the first byte
+  signatureBufferView[0] += generateValidSignature ? 0 : 1;
+  // This is what the user should provide
+  const signature = uint8ArrayToBase64URL(signatureBufferView);
+
+  return { publicJSONWebKey, signature };
+}
+
 test('verifyToken should reject token with invalid format', () => {
   const token = 'Test/F9+';
   const expectedTokenHash = 'Test_valid';
@@ -75,13 +109,8 @@ test.each(['Test_invalid$', ''])(
   'verifySignature should reject signature "%s" with invalid format',
   async (signature) => {
     const data = crypto.getRandomValues(new Uint8Array(32));
-    // const signature = 'Test_invalid$';
-    const { publicKey: publicCryptoKey } = (await crypto.subtle.generateKey(
-      { name: 'ECDSA', namedCurve: 'p-521' },
-      true,
-      ['verify', 'sign'],
-    )) as CryptoKeyPair;
-    // This is what the verification system should store
+
+    const { publicKey: publicCryptoKey } = await generateCryptoKeyPair();
     const publicJSONWebKey = JSON.stringify(
       await crypto.subtle.exportKey('jwk', publicCryptoKey),
     );
@@ -98,26 +127,7 @@ test.each(['Test_invalid$', ''])(
 test('verifySignature should accept valid signature', async () => {
   const data = crypto.getRandomValues(new Uint8Array(32));
 
-  const { publicKey: publicCryptoKey, privateKey: privateCyrptoKey } =
-    (await crypto.subtle.generateKey(
-      { name: 'ECDSA', namedCurve: 'p-521' },
-      true,
-      ['verify', 'sign'],
-    )) as CryptoKeyPair;
-  // This is what the verification system should store
-  const publicJSONWebKey = JSON.stringify(
-    await crypto.subtle.exportKey('jwk', publicCryptoKey),
-  );
-
-  const signatureBufferView = new Uint8Array(
-    await crypto.subtle.sign(
-      { name: 'ECDSA', hash: 'SHA-512' },
-      privateCyrptoKey,
-      data,
-    ),
-  );
-  // This is what the user should provide
-  const signature = uint8ArrayToBase64URL(signatureBufferView);
+  const { signature, publicJSONWebKey } = await prepareSignatureTestData(data);
 
   expect(verifySignature(data, signature, publicJSONWebKey)).resolves.toBe(
     true,
@@ -128,28 +138,10 @@ test('verifySignature should accept valid signature', async () => {
 test('verifySignature should reject invalid signature', async () => {
   const data = crypto.getRandomValues(new Uint8Array(32));
 
-  const { publicKey: publicCryptoKey, privateKey: privateCyrptoKey } =
-    (await crypto.subtle.generateKey(
-      { name: 'ECDSA', namedCurve: 'p-521' },
-      true,
-      ['verify', 'sign'],
-    )) as CryptoKeyPair;
-  // This is what the verification system should store
-  const publicJSONWebKey = JSON.stringify(
-    await crypto.subtle.exportKey('jwk', publicCryptoKey),
+  const { signature, publicJSONWebKey } = await prepareSignatureTestData(
+    data,
+    false,
   );
-
-  const signatureBufferView = new Uint8Array(
-    await crypto.subtle.sign(
-      { name: 'ECDSA', hash: 'SHA-512' },
-      privateCyrptoKey,
-      data,
-    ),
-  );
-  // Modify the first byte
-  signatureBufferView[0] += 1;
-  // This is what the user should provide
-  const signature = uint8ArrayToBase64URL(signatureBufferView);
 
   expect(verifySignature(data, signature, publicJSONWebKey)).resolves.toBe(
     false,
@@ -158,12 +150,8 @@ test('verifySignature should reject invalid signature', async () => {
 
 test('verifySignedURL should reject URL without signature', async () => {
   const url = 'https://test.com';
-  const { publicKey: publicCryptoKey } = (await crypto.subtle.generateKey(
-    { name: 'ECDSA', namedCurve: 'p-521' },
-    true,
-    ['verify', 'sign'],
-  )) as CryptoKeyPair;
-  // This is what the verification system should store
+
+  const { publicKey: publicCryptoKey } = await generateCryptoKeyPair();
   const publicJSONWebKey = JSON.stringify(
     await crypto.subtle.exportKey('jwk', publicCryptoKey),
   );
@@ -177,26 +165,9 @@ test('verifySignedURL should reject URL without signature', async () => {
 test('verifySignedURL should accept URL with valid signature', async () => {
   const url = new URL(`https://test.com/foo?r=${Math.random().toString()}`);
 
-  const { publicKey: publicCryptoKey, privateKey: privateCyrptoKey } =
-    (await crypto.subtle.generateKey(
-      { name: 'ECDSA', namedCurve: 'p-521' },
-      true,
-      ['verify', 'sign'],
-    )) as CryptoKeyPair;
-  // This is what the verification system should store
-  const publicJSONWebKey = JSON.stringify(
-    await crypto.subtle.exportKey('jwk', publicCryptoKey),
+  const { signature, publicJSONWebKey } = await prepareSignatureTestData(
+    stringToUint8Array(url.href),
   );
-
-  const signatureBufferView = new Uint8Array(
-    await crypto.subtle.sign(
-      { name: 'ECDSA', hash: 'SHA-512' },
-      privateCyrptoKey,
-      stringToUint8Array(url.href),
-    ),
-  );
-  // This is what the user should provide
-  const signature = uint8ArrayToBase64URL(signatureBufferView);
 
   url.searchParams.append('sig', signature);
 
