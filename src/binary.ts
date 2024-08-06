@@ -1,25 +1,31 @@
+/**
+ * Checks if the inputted string is a valid base64URL string
+ * @param string The string to be checked
+ * @returns Whether the string is a valid base64URL string
+ */
 export function isBase64URL(string: string) {
   return /^[0-9A-Za-z_-]+$/.test(string);
 }
 
 /**
- * Converts an `Uint8Array` into an ASCII string
+ * Converts an `Uint8Array` into a Latin1 string
  * @param bufferView The `Uint8Array` to be converted
- * @returns The converted ASCII string
- *
- * SAFETY: There is no runtime check to ensure the inputted argument is an `Uint8Array`.
- * Any array element larger than 255 may produce unexpected result.
- * Don't use this function to process untrusted user input.
+ * @returns The converted Latin1 string
+ * @throws `TypeError` if bufferView is not an `Uint8Array`
  */
 export function uint8ArrayToString(bufferView: Uint8Array) {
+  if (!(bufferView instanceof Uint8Array)) {
+    throw new TypeError('bufferView is not Uint8Array');
+  }
+
   return String.fromCharCode(...bufferView);
 }
 
 /**
- * Convert an ASCII string into an `Uint8Array`
- * @param string The ASCII string to be converted
+ * Convert a Latin1 string into an `Uint8Array`
+ * @param string The Latin1 string to be converted
  * @returns The converted `Uint8Array`
- * @throws `RangeError` if the string contains non-ASCII character (code point higher than 255)
+ * @throws `RangeError` if the string contains non-Latin1 character (code point higher than 255)
  */
 export function stringToUint8Array(string: string) {
   return Uint8Array.from<string>(string, (character) => {

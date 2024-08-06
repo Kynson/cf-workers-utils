@@ -12,6 +12,8 @@ test.each([
   ['QQ', true],
   ['QQ_-test-123', true],
   ['test-123/@==', false],
+  ['test-non-latin1-Ā', false],
+  ['', false],
 ])('isBase64URL("%s") should be %j', (string, expectedResult) => {
   expect(isBase64URL(string)).toBe(expectedResult);
 });
@@ -31,6 +33,16 @@ test('uint8ArrayToString and stringToUint8Array should be a pair of inverse func
   const decodedBuffer = stringToUint8Array(encodedString);
 
   expect(decodedBuffer).toStrictEqual(bufferView);
+});
+
+test('uint8ArrayToBase64URL should reject non-Uint8Array bufferView', () => {
+  // Override the type to force TS to accept this for testing
+  const bufferView = new Uint16Array(32) as unknown as Uint8Array;
+  crypto.getRandomValues(bufferView);
+
+  expect(() => uint8ArrayToBase64URL(bufferView)).toThrowError(
+    new TypeError('bufferView is not Uint8Array'),
+  );
 });
 
 // This test only valid when isBase64URL passes all tests
