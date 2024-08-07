@@ -1,7 +1,7 @@
 {
-  "name": "workers-utils",
+  "name": "cf-workers-utils",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
     "test": "vitest",
     "lint": "eslint",
@@ -9,7 +9,7 @@
   },
   "author": "Kynson Szetau (https://kynsonszetau.com/)",
   "license": "MIT",
-  "description": "",
+  "description": "An opinionated utility library for Cloudflare Workers",
   "type": "module",
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.4.17",
