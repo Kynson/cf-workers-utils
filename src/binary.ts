@@ -45,10 +45,6 @@ export function stringToUint8Array(string: string) {
  * Converts an `Uint8Array` into a base64URL-encoded string
  * @param bufferView The `Uint8Array` to be converted
  * @returns The converted base64URL-encoded string
- *
- * SAFETY: There is no runtime check to ensure the inputted argument is an `Uint8Array`.
- * Any array element larger than 255 may produce unexpected result.
- * Don't use this function to process untrusted user input.
  */
 export function uint8ArrayToBase64URL(bufferView: Uint8Array) {
   return btoa(uint8ArrayToString(bufferView))

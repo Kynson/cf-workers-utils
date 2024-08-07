@@ -4,6 +4,12 @@ import {
   stringToUint8Array,
 } from './binary';
 
+/**
+ * Converts the `RangeError` thrown by `base64URLToUintArray()` by updating its error message
+ * @param error An errror thrown by `base64URLToUint8Array()`
+ * @param argumentName The name of the argument which caused the RangeError
+ * @returns The converted Error
+ */
 function convertBase64URLToUint8ArrayError(
   error: unknown,
   argumentName: string,
@@ -17,6 +23,12 @@ function convertBase64URLToUint8ArrayError(
   return new RangeError(updatedErrorMessage);
 }
 
+/**
+ * Verifies a token with a expected token hash
+ * @param token The token to be verified. Must be base64URL-encoded
+ * @param expectedTokenHash The expected SHA-512 hash of the token. Must be base64URL-encoded
+ * @returns Whether the token matches the expected hash
+ */
 export async function verifyToken(token: string, expectedTokenHash: string) {
   if (!isBase64URL(token)) {
     throw new RangeError(
@@ -42,6 +54,13 @@ export async function verifyToken(token: string, expectedTokenHash: string) {
   return crypto.subtle.timingSafeEqual(tokenHash, expectedTokenHashBufferView);
 }
 
+/**
+ * Verifies a signature of some data using a public key. Uses ECDSA with P-521 curve and SHA-512 hash
+ * @param data The data to be verified
+ * @param signature The signature to be verified. Must be base64URL-encoded
+ * @param publicKey The public key used for verification. Must be an ECDSA P-521 JSON Web Key (JWK) string
+ * @returns Whether the signature is valid
+ */
 export async function verifySignature(
   data: ArrayBuffer | ArrayBufferView,
   signature: string,
@@ -74,6 +93,12 @@ export async function verifySignature(
   );
 }
 
+/**
+ * Verifies a signed URL. Uses ECDSA with P-521 curve and SHA-512 hash
+ * @param url The URL to be verified. The signature should be included in the `sig` serach parameter
+ * @param publicKey The public key used for verification. Must be a JSON Web Key (JWK) string
+ * @returns Whether the URL's signature is valid
+ */
 export async function verifySignedURL(url: string, publicKey: string) {
   // This will ensure all non-Latain1 characters encoded correctly
   const parsedURL = new URL(url);
