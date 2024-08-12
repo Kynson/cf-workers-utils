@@ -1,7 +1,7 @@
 # cf-workers-utils
 ![Code style: Prettier](https://img.shields.io/badge/code_style-Prettier-blue?style=for-the-badge)
 ![License: MIT](https://img.shields.io/github/license/Kynson/cf-workers-utils?style=for-the-badge)
-![NPM Version](https://img.shields.io/npm/v/cf-workers-utils?style=for-the-badge&logo=npm)
+[![NPM Version](https://img.shields.io/npm/v/cf-workers-utils?style=for-the-badge&logo=npm)](https://npmjs.com/cf-workers-utils)
 
 ## Overview
 This package provides opinionated utility functions for creating responses, authentication and binary data manipulation, designed to be used with [Cloudflare Workers](https://workers.cloudflare.com/).
@@ -104,3 +104,62 @@ Returns The created `Response`, must be a JSON response in the folowing format:
   "errorMessage": "<value of error.message>"
 }
 ```
+
+### Router
+A itty-router like tiny router. It is designed to be a smaller version of [IttyRouter](https://itty.dev/itty-router/routers/ittyrouter), currently sized ~370 bytes when minified.
+
+#### Difference between `Router` and `IttyRouter`
+* `Router.fetch` requires a standard [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object instead of `RequestLike`.
+* `Router` uses [URL Pattern API](https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API) for route pattern matching instead of regex.
+* Parsed URL is available under `request.parsedURL` in `Router`. It is the value returned by `URLPattern.exec(url)`, where `url` is the URL of the incoming request (i.e. `request.url`).
+* `params` and `query` is not available in `Router` route handlers.
+
+#### createRouter<R, A, C>(base?: string): Router<R, A, C>
+Creates an itty-router like tiny router.
+
+* `base` Base URL of the router. If omitted, all patterns must be a full URL.
+
+* `R` The type of request with any additional properities to be defined on it, e.g., properities that will be injected by middleware.
+* `A` (`AdditionalArguments`) An array or a tuple indicating the type of any additional arguments to be passed to the route handlers. For example if you would like to pass a `string` and `number` as additional arguments to the route handlers, pass in `[string, number]`.
+* `C` (`CustomMethod`) An union of any custom methods that are not included in the default type.
+
+Returns the created router.
+
+#### Router.<methodName>(pattern: string, ..handlers: (request: R, ...additionalArguments: A) => unknown): Router<R, A, C>
+Registers a route which match request with method `methodName` and URL matches `pattern`.
+
+* `pattern` A pattern to be used to match the URL of the incoming request. See [URL Pattern API](https://developer.mozilla.org/en-US/docs/Web/API/URL_Pattern_API#pattern_syntax) for syntax.
+* `handlers` Handlers which process the matched request. Handlers can act as a middleware and modify the `request` object. Returing a truthy value from a handler will prevent any handlers following it from executing and the value will be used as the returning value of `Router.fetch`.
+* `request` The incomming request. It contains an extra field `parsedURL`.
+* `additionalArguments` Additional arguments passed to `Router.fetch`.
+
+Returns `Router` for chaining.
+
+#### Router.fetch(request: R,  ...additionalArguments: A): Promise<unknown>
+Handles an incoming fetch event.
+
+* `request` An incoming request. Can be extended by middlewares.
+* `additionalArguments`Additional arguments to be passed to the registered handlers (e.g. environment bindings).
+
+Returns the return value of the first handler returning a truthy value.
+
+#### Example
+```typescript
+import type { Router, ExtendedRequest } from 'cf-workers-utils/router';
+import { createRouter } from 'cf-workers-utils/router';
+
+const router = createRouter<ExtendedRequest, [string]>('https://base.com');
+
+const middleware = (request: ExtendedRequest, additionalArgument: string) => {
+  if (request.parsedURL?.pathname.groups.id === 'private') {
+    return `ID is private. Additional argument: ${additionalArgument}`;
+  }
+}
+
+router.get('/foo/:id', middleware, () => 'hello world!');
+
+// Resolves to 'ID is private. Additional argument: extra value'
+await router.fetch(new Request('https://base.com/foo/private'), 'extra value');
+```
+
+You may refer to the [itty-router docs](https://itty.dev/docs) for more examples.
